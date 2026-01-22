@@ -1,0 +1,55 @@
+# PKI Infrastructure Audit & Alignment Tool - .gitignore
+
+# Конфигурация (содержит чувствительные данные)
+config/env.json
+config/*.json
+!config/env.example.json
+
+# Выходные данные
+output/
+*.log
+*.json
+!package.json
+!package-lock.json
+
+# Evidence packs
+evidence_*/
+
+# Backups
+backups/
+*.reg
+*.bak
+
+# Временные файлы
+*.tmp
+*.temp
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# PowerShell
+*.ps1.bak
+*.psm1.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python (если используется для генерации отчётов)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Документация (сгенерированная)
+docs/_build/
+docs/.doctrees/
