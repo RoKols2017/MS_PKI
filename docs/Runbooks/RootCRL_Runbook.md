@@ -203,6 +203,7 @@ shutdown /s /t 0
 
 ## Связанные документы
 
-- `docs/01_Phase1_Audit_AS-IS.md` — процедура аудита
-- `docs/Runbooks/IssuingCRL_Runbook.md` — публикация Issuing CA CRL
-- `rules/PKI_RULES.md` — правила безопасности
+- [`docs/01_Phase1_Audit_AS-IS.md`](../01_Phase1_Audit_AS-IS.md) — процедура аудита
+- [`docs/Runbooks/IssuingCRL_Runbook.md`](IssuingCRL_Runbook.md) — публикация Issuing CA CRL
+- [`rules/PKI_RULES.md`](../../rules/PKI_RULES.md) — правила безопасности
+- [`QUICKSTART.md`](../../QUICKSTART.md) — быстрый старт

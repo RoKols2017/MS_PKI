@@ -6,7 +6,41 @@
 
 Убедитесь, что все файлы проекта на месте.
 
+**Важно**: Скрипты должны запускаться на **CA1 (Issuing CA)** сервере. См. [`docs/WHERE_TO_RUN_SCRIPTS.md`](docs/WHERE_TO_RUN_SCRIPTS.md) для деталей.
+
 ### 1.2. Создание конфигурации
+
+**Вариант 1: Автоматическое заполнение (рекомендуется)**
+
+```powershell
+# Запустите скрипт автоматического заполнения
+.\src\Initialize-PkiConfig.ps1
+```
+
+Скрипт автоматически определит:
+- ✅ Домен (через AD или WMI)
+- ✅ CA1 параметры (имя, hostname, DNS)
+- ✅ IIS настройки (site name, web root)
+- ✅ Стандартные пути
+- ✅ Endpoints URLs
+
+**Требования:**
+- Права локального администратора (Administrators) — **ОБЯЗАТЕЛЬНО**
+- Права Domain Admin — рекомендуется для получения информации о домене
+
+После выполнения скрипта **заполните параметры CA0**:
+
+**Вариант 1: Автоматический сбор на CA0 (рекомендуется)**
+
+```powershell
+# На CA0 сервере (включите сервер, если он offline)
+.\src\Get-CA0Config.ps1
+
+# Скопируйте выведенные параметры
+# На CA1 вставьте их в секцию 'ca0' файла config\env.json
+```
+
+**Вариант 2: Ручное заполнение**
 
 ```powershell
 # Скопируйте пример конфигурации
@@ -15,6 +49,12 @@ Copy-Item config\env.example.json config\env.json
 # Отредактируйте config\env.json под вашу инфраструктуру
 notepad config\env.json
 ```
+
+Заполните вручную в `config\env.json`:
+- `ca0.name` — имя Root CA
+- `ca0.hostname` — hostname сервера CA0
+- `ca0.dnsName` — FQDN сервера CA0
+- `ca0.commonName` — Common Name Root CA
 
 **Обязательно заполните**:
 - `domain.name`, `domain.fqdn`

@@ -237,10 +237,11 @@ Register-ScheduledTask -TaskName "PKI-Rollback-Test" `
 
 ## Связанные документы
 
-- `docs/04_Phase4_Alignment.md` — процедура выравнивания
-- `docs/AUDIT_REPORT.md` — отчёт об аудите
-- `docs/AUDIT_FIXES_SUMMARY.md` — резюме исправлений
-- `rules/PKI_RULES.md` — правила безопасности
+- [`docs/01_Phase1_Audit_AS-IS.md`](../01_Phase1_Audit_AS-IS.md) — процедура аудита
+- [`docs/AUDIT_REPORT.md`](../AUDIT_REPORT.md) — отчёт об аудите
+- [`docs/AUDIT_FIXES_SUMMARY.md`](../AUDIT_FIXES_SUMMARY.md) — резюме исправлений
+- [`rules/PKI_RULES.md`](../../rules/PKI_RULES.md) — правила безопасности
+- [`QUICKSTART.md`](../../QUICKSTART.md) — быстрый старт
 
 ## Важные напоминания
 

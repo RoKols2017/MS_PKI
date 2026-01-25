@@ -284,3 +284,12 @@ CA1 (Enterprise Issuing CA)
 ## Поддержка
 
 Внутренний корпоративный проект. Для вопросов обращайтесь к команде PKI Engineering.
+
+## Связанные документы
+
+- [`README.md`](../README.md) — главный файл проекта
+- [`QUICKSTART.md`](../QUICKSTART.md) — быстрый старт
+- [`docs/01_Phase1_Audit_AS-IS.md`](01_Phase1_Audit_AS-IS.md) — Phase 1: Audit
+- [`docs/ADMIN_START_GUIDE.md`](ADMIN_START_GUIDE.md) — руководство для администратора
+- [`docs/WHERE_TO_RUN_SCRIPTS.md`](WHERE_TO_RUN_SCRIPTS.md) — на каком CA запускать скрипты
+- [`rules/PKI_RULES.md`](../rules/PKI_RULES.md) — правила безопасности

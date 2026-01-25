@@ -317,6 +317,7 @@ certutil -setreg CA\CRLDeltaPeriodUnits Days
 
 ## Связанные документы
 
-- `docs/01_Phase1_Audit_AS-IS.md` — процедура аудита
-- `docs/Runbooks/RootCRL_Runbook.md` — публикация Root CA CRL
-- `rules/PKI_RULES.md` — правила безопасности
+- [`docs/01_Phase1_Audit_AS-IS.md`](../01_Phase1_Audit_AS-IS.md) — процедура аудита
+- [`docs/Runbooks/RootCRL_Runbook.md`](RootCRL_Runbook.md) — публикация Root CA CRL
+- [`rules/PKI_RULES.md`](../../rules/PKI_RULES.md) — правила безопасности
+- [`QUICKSTART.md`](../../QUICKSTART.md) — быстрый старт

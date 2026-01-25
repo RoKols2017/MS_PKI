@@ -286,3 +286,11 @@ New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 2. Изучите `baseline.json` для детального анализа
 3. Запустите `Invoke-PkiValidation.ps1` для проверки здоровья инфраструктуры
 4. Используйте `baseline.json` как входные данные для `Invoke-PkiAlignment.ps1`
+
+## Связанные документы
+
+- [`docs/00_Overview.md`](00_Overview.md) — обзор проекта и архитектура
+- [`docs/WHERE_TO_RUN_SCRIPTS.md`](WHERE_TO_RUN_SCRIPTS.md) — на каком CA запускать скрипты
+- [`docs/ADMIN_START_GUIDE.md`](ADMIN_START_GUIDE.md) — руководство для администратора
+- [`QUICKSTART.md`](../QUICKSTART.md) — быстрый старт
+- [`rules/PKI_RULES.md`](../rules/PKI_RULES.md) — правила безопасности
