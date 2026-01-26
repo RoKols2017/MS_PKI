@@ -1,4 +1,4 @@
-# Logging.psm1
+﻿# Logging.psm1
 # Модуль структурированного логирования
 
 function Write-Log {

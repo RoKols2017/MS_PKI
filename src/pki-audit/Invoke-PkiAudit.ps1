@@ -1,4 +1,4 @@
-# Invoke-PkiAudit.ps1
+﻿# Invoke-PkiAudit.ps1
 # Phase 1: AS-IS Audit (Read-Only)
 # Автоматизированный аудит PKI-инфраструктуры на базе Microsoft AD CS
 

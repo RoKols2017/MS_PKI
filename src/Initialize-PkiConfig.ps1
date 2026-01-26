@@ -1,4 +1,4 @@
-# Initialize-PkiConfig.ps1
+﻿# Initialize-PkiConfig.ps1
 # Автоматическое заполнение конфигурации env.json на основе обнаруженных параметров системы
 
 [CmdletBinding(SupportsShouldProcess = $true)]

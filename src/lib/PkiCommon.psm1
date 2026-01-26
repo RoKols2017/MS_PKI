@@ -1,4 +1,4 @@
-# PkiCommon.psm1
+﻿# PkiCommon.psm1
 # Общие функции для работы с PKI
 
 function Import-PkiConfig {

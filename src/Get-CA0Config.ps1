@@ -1,4 +1,4 @@
-# Get-CA0Config.ps1
+﻿# Get-CA0Config.ps1
 # Сбор параметров CA0 (Root CA) для заполнения env.json
 # Запускать на CA0 сервере под администратором
 

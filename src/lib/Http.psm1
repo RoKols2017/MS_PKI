@@ -1,4 +1,4 @@
-# Http.psm1
+﻿# Http.psm1
 # Функции для работы с HTTP и IIS
 
 function Test-HttpEndpoint {

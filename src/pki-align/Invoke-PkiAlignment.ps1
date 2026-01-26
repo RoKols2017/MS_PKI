@@ -1,4 +1,4 @@
-# Invoke-PkiAlignment.ps1
+﻿# Invoke-PkiAlignment.ps1
 # Phase 4: Alignment - безопасное выравнивание конфигурации PKI
 
 [CmdletBinding(SupportsShouldProcess = $true)]

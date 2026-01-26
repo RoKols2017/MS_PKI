@@ -1,4 +1,4 @@
-# Invoke-PkiValidation.ps1
+﻿# Invoke-PkiValidation.ps1
 # Валидация PKI-инфраструктуры: проверка здоровья и соответствия best practices
 
 [CmdletBinding()]

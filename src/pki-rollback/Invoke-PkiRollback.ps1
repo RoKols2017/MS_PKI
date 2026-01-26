@@ -1,4 +1,4 @@
-# Invoke-PkiRollback.ps1
+﻿# Invoke-PkiRollback.ps1
 # Откат применённых изменений PKI выравнивания
 
 [CmdletBinding(SupportsShouldProcess = $true)]

@@ -1,4 +1,4 @@
-# CertUtil.psm1
+﻿# CertUtil.psm1
 # Функции для работы с certutil и сертификатами
 
 function Get-CACertificate {

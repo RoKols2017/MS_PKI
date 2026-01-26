@@ -1,4 +1,4 @@
-# PkiSecurity.psm1
+﻿# PkiSecurity.psm1
 # Функции безопасности для PKI операций
 
 function Test-PathTraversal {
