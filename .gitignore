@@ -11,6 +11,7 @@ output/
 *.json
 !package.json
 !package-lock.json
+!config/env.example.json
 
 # Evidence packs
 evidence_*/
