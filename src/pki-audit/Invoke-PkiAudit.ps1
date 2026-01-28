@@ -16,8 +16,7 @@ param(
     
     [switch]$IncludeEventLogs,
     [switch]$IncludeIisExport,
-    [switch]$TestCertPath,
-    [switch]$WhatIf
+    [switch]$TestCertPath
 )
 
 #region Инициализация

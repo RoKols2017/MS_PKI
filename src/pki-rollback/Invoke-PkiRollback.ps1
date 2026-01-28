@@ -11,9 +11,7 @@ param(
     
     [string[]]$ChangeIds = @(),
     
-    [switch]$All,
-    
-    [switch]$WhatIf
+    [switch]$All
 )
 
 #region Инициализация
@@ -98,7 +96,7 @@ Write-Log -Level Info -Message "Найдено изменений для отк�
 
 #region WhatIf режим
 
-if ($WhatIf) {
+if ($WhatIfPreference) {
     Write-Host "`n=== ПЛАН ОТКАТА (WhatIf режим) ===" -ForegroundColor Cyan
     Write-Host "Изменений для отката: $($changesToRollback.Count)" -ForegroundColor Yellow
     

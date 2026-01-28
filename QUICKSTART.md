@@ -71,7 +71,7 @@ notepad config\env.json
 ```powershell
 # Проверка прав
 [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent() | 
-    Select-Object -ExpandProperty IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    ForEach-Object { $_.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) }
 ```
 
 Должно вернуть `True`.

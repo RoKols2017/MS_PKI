@@ -13,8 +13,7 @@ param(
     
     [switch]$Apply,
     [switch]$Backup,
-    [string]$RollbackPointName = '',
-    [switch]$WhatIf
+    [string]$RollbackPointName = ''
 )
 
 #region Инициализация
@@ -43,9 +42,7 @@ if (-not $PSBoundParameters.ContainsKey('Apply')) {
 if (-not $PSBoundParameters.ContainsKey('Backup')) {
     $Backup = $true
 }
-if (-not $PSBoundParameters.ContainsKey('WhatIf')) {
-    $WhatIf = $true
-}
+# WhatIf автоматически доступен через $WhatIfPreference при SupportsShouldProcess
 
 # Инициализация логирования
 Initialize-Logging -OutputPath $OutputPath -Level 'Info'
@@ -183,7 +180,7 @@ function Add-ChangePlan {
     
     $script:AlignmentPlan.changes += $change
     
-    if ($WhatIf -or -not $Apply) {
+    if ($WhatIfPreference -or -not $Apply) {
         Write-Log -Level Info -Message "[PLAN] $Category : $Description" -Operation 'Alignment' -OutputPath $OutputPath
         Write-Log -Level Info -Message "  Change ID: $($change.changeId)" -Operation 'Alignment' -OutputPath $OutputPath
         Write-Log -Level Info -Message "  Старое значение: $($OldValue | ConvertTo-Json -Compress)" -Operation 'Alignment' -OutputPath $OutputPath
