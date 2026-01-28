@@ -1,4 +1,4 @@
-﻿# Invoke-PkiAlignment.ps1
+# Invoke-PkiAlignment.ps1
 # Phase 4: Alignment - безопасное выравнивание конфигурации PKI
 
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -183,8 +183,11 @@ function Add-ChangePlan {
     if ($WhatIfPreference -or -not $Apply) {
         Write-Log -Level Info -Message "[PLAN] $Category : $Description" -Operation 'Alignment' -OutputPath $OutputPath
         Write-Log -Level Info -Message "  Change ID: $($change.changeId)" -Operation 'Alignment' -OutputPath $OutputPath
-        Write-Log -Level Info -Message "  Старое значение: $($OldValue | ConvertTo-Json -Compress)" -Operation 'Alignment' -OutputPath $OutputPath
-        Write-Log -Level Info -Message "  Новое значение: $($NewValue | ConvertTo-Json -Compress)" -Operation 'Alignment' -OutputPath $OutputPath
+        # Безопасная сериализация значений, чтобы избежать ошибок ConvertTo-Json
+        $oldJson = ConvertTo-SafeJson -InputObject $OldValue -Depth 10
+        $newJson = ConvertTo-SafeJson -InputObject $NewValue -Depth 10
+        Write-Log -Level Info -Message "  Старое значение: $oldJson" -Operation 'Alignment' -OutputPath $OutputPath
+        Write-Log -Level Info -Message "  Новое значение: $newJson" -Operation 'Alignment' -OutputPath $OutputPath
         if ($RollbackAction) {
             Write-Log -Level Info -Message "  Rollback доступен" -Operation 'Alignment' -OutputPath $OutputPath
         }
@@ -729,7 +732,9 @@ function Invoke-ApplyChanges {
 
 function Export-AlignmentPlan {
     $planPath = Join-Path $OutputPath "alignment_plan_$(Get-Timestamp).json"
-    $planJson = $script:AlignmentPlan | ConvertTo-Json -Depth 10
+    # Используем безопасную сериализацию, чтобы избежать ошибок вида
+    # "Элемент с тем же ключом уже был добавлен" внутри ConvertTo-Json.
+    $planJson = ConvertTo-SafeJson -InputObject $script:AlignmentPlan -Depth 10
     $planJson | Out-File -FilePath $planPath -Encoding UTF8
     
     Write-Log -Level Info -Message "План выравнивания экспортирован: $planPath" -Operation 'Alignment' -OutputPath $OutputPath
