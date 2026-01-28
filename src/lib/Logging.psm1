@@ -1,4 +1,4 @@
-﻿# Logging.psm1
+# Logging.psm1
 # Модуль структурированного логирования
 
 function Write-Log {
@@ -39,7 +39,7 @@ function Write-Log {
         [string]$Operation = '',
         [string]$Role = '',
         [hashtable]$Parameters = @{},
-        [Exception]$Exception = $null,
+        [object]$Exception = $null,
         [string]$OutputPath = ''
     )
     
@@ -53,10 +53,23 @@ function Write-Log {
     if ($Role) { $logEntry.role = $Role }
     if ($Parameters.Count -gt 0) { $logEntry.parameters = $Parameters }
     if ($Exception) {
+        # Нормализация исключения: поддержка как [Exception], так и [ErrorRecord]
+        $ex = $null
+        if ($Exception -is [System.Management.Automation.ErrorRecord]) {
+            $ex = $Exception.Exception
+        }
+        elseif ($Exception -is [Exception]) {
+            $ex = $Exception
+        }
+        else {
+            # Попытка привести к строке, если тип неизвестен
+            $ex = New-Object System.Exception([string]$Exception)
+        }
+        
         $logEntry.exception = @{
-            message = $Exception.Message
-            type    = $Exception.GetType().FullName
-            stack   = $Exception.StackTrace
+            message = $ex.Message
+            type    = $ex.GetType().FullName
+            stack   = $ex.StackTrace
         }
     }
     
@@ -72,7 +85,15 @@ function Write-Log {
     
     Write-Host "[$($Level)] $Message" -ForegroundColor $color
     if ($Exception) {
-        Write-Host "  Exception: $($Exception.Message)" -ForegroundColor $color
+        if ($Exception -is [System.Management.Automation.ErrorRecord]) {
+            Write-Host "  Exception: $($Exception.Exception.Message)" -ForegroundColor $color
+        }
+        elseif ($Exception -is [Exception]) {
+            Write-Host "  Exception: $($Exception.Message)" -ForegroundColor $color
+        }
+        else {
+            Write-Host "  Exception: $Exception" -ForegroundColor $color
+        }
     }
     
     # Файловый вывод
