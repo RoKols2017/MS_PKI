@@ -151,6 +151,9 @@ $baseline = Get-ChildItem .\output\baseline_*.json | Sort-Object LastWriteTime -
     -ConfigPath .\config\env.json `
     -OutputPath .\output `
     -BaselinePath $baseline.FullName
+
+# Опционально: явный сертификат для certutil -verify -urlfetch
+# .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output -BaselinePath $baseline.FullName -CertificatePath "C:\certs\test.cer"
 ```
 
 Просмотрите отчёт валидации:

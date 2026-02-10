@@ -62,20 +62,138 @@ catch {
 
 #region Определение изменений для отката
 
+function Invoke-ChangeRollback {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Change
+    )
+
+    $changeType = if ($Change.actionType) {
+        [string]$Change.actionType
+    }
+    else {
+        switch ([string]$Change.category) {
+            'IIS_MIME' { 'IIS_MIME' }
+            'IIS_ACL' { 'IIS_ACL' }
+            'CRL_Publication' { 'CRL_Publication' }
+            'CRL_Copy' { 'CRL_Copy' }
+            default { '' }
+        }
+    }
+
+    switch ($changeType) {
+        'IIS_MIME' {
+            try {
+                Import-Module WebAdministration -ErrorAction Stop
+                $mimeData = $Change.newValue
+                $siteName = if ($mimeData.SiteName) { $mimeData.SiteName } else { 'Default Web Site' }
+                Remove-WebConfigurationProperty -Filter "system.webServer/staticContent" -Name "." -PSPath "IIS:\Sites\$siteName" `
+                    -AtElement @{ fileExtension = $mimeData.Extension; mimeType = $mimeData.MimeType } -ErrorAction Stop
+                Write-Log -Level Info -Message "MIME тип удалён (rollback): $($mimeData.Extension)" -Operation 'Rollback' -OutputPath $OutputPath
+                return $true
+            }
+            catch {
+                Write-Log -Level Error -Message "Ошибка rollback MIME типа: $_" -Operation 'Rollback' -OutputPath $OutputPath
+                return $false
+            }
+        }
+        'IIS_ACL' {
+            try {
+                $targetPath = $Change.newValue.path
+                $aclBackupPath = $Change.oldValue.aclBackupPath
+                if ($aclBackupPath -and (Test-Path $aclBackupPath)) {
+                    $oldAcl = Import-Clixml -Path $aclBackupPath
+                    Set-Acl -Path $targetPath -AclObject $oldAcl
+                    Write-Log -Level Info -Message "ACL откачен для: $targetPath" -Operation 'Rollback' -OutputPath $OutputPath
+                    return $true
+                }
+
+                Write-Log -Level Warning -Message "Файл backup ACL не найден: $aclBackupPath" -Operation 'Rollback' -OutputPath $OutputPath
+                return $false
+            }
+            catch {
+                Write-Log -Level Error -Message "Ошибка rollback ACL: $_" -Operation 'Rollback' -OutputPath $OutputPath
+                return $false
+            }
+        }
+        'CRL_Publication' {
+            try {
+                $oldUrls = $Change.oldValue.urls
+
+                $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\*"
+                $caConfigs = Get-ItemProperty -Path $regPath -ErrorAction Stop
+                if (-not $caConfigs) {
+                    Write-Log -Level Error -Message "CA конфигурация не найдена при rollback" -Operation 'Rollback' -OutputPath $OutputPath
+                    return $false
+                }
+
+                $caConfig = $caConfigs | Select-Object -First 1
+                if (-not $caConfig -or -not $caConfig.PSChildName) {
+                    Write-Log -Level Error -Message "Не удалось определить имя CA при rollback" -Operation 'Rollback' -OutputPath $OutputPath
+                    return $false
+                }
+
+                $caName = $caConfig.PSChildName
+                $fullRegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\$caName"
+
+                Set-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -Value $oldUrls -ErrorAction Stop
+                Write-Log -Level Info -Message "CRLPublicationURLs откачен к предыдущему значению" -Operation 'Rollback' -OutputPath $OutputPath
+                return $true
+            }
+            catch {
+                Write-Log -Level Error -Message "Ошибка rollback CRLPublicationURLs: $_" -Operation 'Rollback' -OutputPath $OutputPath
+                return $false
+            }
+        }
+        'CRL_Copy' {
+            try {
+                $destFile = $Change.newValue.path
+                $existedBefore = [bool]$Change.oldValue.exists
+                $backupPath = $Change.oldValue.backupPath
+
+                if ($existedBefore) {
+                    if ($backupPath -and (Test-Path $backupPath)) {
+                        Copy-Item -Path $backupPath -Destination $destFile -Force -ErrorAction Stop
+                        Write-Log -Level Info -Message "CRL откачен из backup: $destFile" -Operation 'Rollback' -OutputPath $OutputPath
+                        return $true
+                    }
+
+                    Write-Log -Level Warning -Message "Нельзя безопасно откатить CRL без backup: $destFile" -Operation 'Rollback' -OutputPath $OutputPath
+                    return $false
+                }
+
+                if (Test-Path $destFile) {
+                    Remove-Item -Path $destFile -Force -ErrorAction SilentlyContinue
+                    Write-Log -Level Info -Message "CRL файл удалён (создан во время выравнивания): $destFile" -Operation 'Rollback' -OutputPath $OutputPath
+                }
+                return $true
+            }
+            catch {
+                Write-Log -Level Error -Message "Ошибка rollback CRL: $_" -Operation 'Rollback' -OutputPath $OutputPath
+                return $false
+            }
+        }
+        default {
+            Write-Log -Level Warning -Message "Неизвестный тип изменения, откат пропущен: category=$($Change.category), actionType=$($Change.actionType)" -Operation 'Rollback' -OutputPath $OutputPath
+            return $false
+        }
+    }
+}
+
 $changesToRollback = @()
 
 if ($All) {
     $changesToRollback = $plan.changes | Where-Object { 
-        $_.applied -eq $true -and 
-        $null -ne $_.rollbackAction 
+        $_.applied -eq $true -and
+        ($_.actionType -or $_.category -in @('IIS_MIME', 'IIS_ACL', 'CRL_Publication', 'CRL_Copy'))
     }
     Write-Log -Level Info -Message "Режим: откат всех применённых изменений" -Operation 'Rollback' -OutputPath $OutputPath
 }
 elseif ($ChangeIds.Count -gt 0) {
     $changesToRollback = $plan.changes | Where-Object { 
-        $_.changeId -in $ChangeIds -and 
-        $_.applied -eq $true -and 
-        $null -ne $_.rollbackAction 
+        $_.changeId -in $ChangeIds -and
+        $_.applied -eq $true -and
+        ($_.actionType -or $_.category -in @('IIS_MIME', 'IIS_ACL', 'CRL_Publication', 'CRL_Copy'))
     }
     Write-Log -Level Info -Message "Режим: откат указанных изменений (ID: $($ChangeIds -join ', '))" -Operation 'Rollback' -OutputPath $OutputPath
 }
@@ -129,16 +247,23 @@ foreach ($change in $changesToRollback) {
         Write-Host "`nОткат: $($change.description)" -ForegroundColor Cyan
         Write-Host "  ID: $($change.changeId)" -ForegroundColor Gray
         
-        if (-not $change.rollbackAction) {
-            Write-Host "  ⚠️ Rollback action не определён, пропуск" -ForegroundColor Yellow
+        if (-not $change.actionType -and ($change.category -notin @('IIS_MIME', 'IIS_ACL', 'CRL_Publication', 'CRL_Copy'))) {
+            Write-Host "  ⚠️ Тип отката не определён, пропуск" -ForegroundColor Yellow
             $skippedCount++
             continue
         }
         
         Write-Log -Level Info -Message "Откат изменения: $($change.description) (ID: $($change.changeId))" -Operation 'Rollback' -OutputPath $OutputPath
         
-        # Выполнение rollback action
-        $result = & $change.rollbackAction $change
+        if ($PSCmdlet.ShouldProcess($change.description, 'Rollback PKI alignment change')) {
+            $result = Invoke-ChangeRollback -Change $change
+        }
+        else {
+            $result = $false
+            $skippedCount++
+            Write-Log -Level Info -Message "Откат пропущен через ShouldProcess: $($change.changeId)" -Operation 'Rollback' -OutputPath $OutputPath
+            continue
+        }
         
         if ($result) {
             $change.rolledBack = $true

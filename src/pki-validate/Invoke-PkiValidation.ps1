@@ -9,7 +9,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
     
-    [string]$BaselinePath = ''
+    [string]$BaselinePath = '',
+
+    [string]$CertificatePath = ''
 )
 
 #region Инициализация
@@ -241,7 +243,27 @@ function Test-CertUtilVerify {
     Write-Log -Level Info -Message "Проверка certutil -verify -urlfetch" -Operation 'Validation' -OutputPath $OutputPath
     
     try {
-        $output = Get-CertUtilOutput -Arguments @('-verify', '-urlfetch') -IgnoreErrors
+        $certPath = $CertificatePath
+
+        if (-not $certPath -and $baseline -and $baseline.ca1 -and $baseline.ca1.certificate -and $baseline.ca1.certificate.Path) {
+            $certPath = $baseline.ca1.certificate.Path
+        }
+
+        if (-not $certPath -and $config.iis -and $config.iis.certEnrollPath -and (Test-Path $config.iis.certEnrollPath)) {
+            $candidate = Get-ChildItem -Path $config.iis.certEnrollPath -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Extension -in @('.cer', '.crt') } |
+                Select-Object -First 1
+            if ($candidate) {
+                $certPath = $candidate.FullName
+            }
+        }
+
+        if (-not $certPath -or -not (Test-Path $certPath)) {
+            Add-ValidationCheck -Name 'CertUtil_Verify' -Category 'Client' -Status 'Warning' -Message 'Проверка certutil -verify пропущена: не найден тестовый сертификат. Укажите -CertificatePath.'
+            return
+        }
+
+        $output = Get-CertUtilOutput -Arguments @('-verify', '-urlfetch', $certPath) -IgnoreErrors
         
         $offlineErrors = $output | Where-Object { $_ -match 'CRYPT_E_REVOCATION_OFFLINE' -or $_ -match 'revocation.*offline' }
         
@@ -249,7 +271,7 @@ function Test-CertUtilVerify {
             Add-ValidationCheck -Name 'CertUtil_Verify' -Category 'Client' -Status 'Warning' -Message "Обнаружены проблемы с проверкой отзыва: CRYPT_E_REVOCATION_OFFLINE" -Details @{ errors = $offlineErrors }
         }
         else {
-            Add-ValidationCheck -Name 'CertUtil_Verify' -Category 'Client' -Status 'Pass' -Message "certutil -verify -urlfetch выполнен без критичных ошибок"
+            Add-ValidationCheck -Name 'CertUtil_Verify' -Category 'Client' -Status 'Pass' -Message "certutil -verify -urlfetch выполнен без критичных ошибок для $certPath"
         }
     }
     catch {

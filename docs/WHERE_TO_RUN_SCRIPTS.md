@@ -66,6 +66,7 @@
 **Требования:**
 - Права локального администратора (Administrators) — **ОБЯЗАТЕЛЬНО**
 - Конфигурация `env.json` должна быть заполнена
+- Для проверки `certutil -verify -urlfetch` рекомендуется указать `-CertificatePath` (или обеспечить наличие сертификата в baseline/CertEnroll)
 
 ### Invoke-PkiAlignment.ps1
 

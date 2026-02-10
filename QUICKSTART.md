@@ -116,9 +116,14 @@ $baseline = Get-ChildItem .\output\baseline_*.json | Sort-Object LastWriteTime -
     -ConfigPath .\config\env.json `
     -OutputPath .\output `
     -BaselinePath $baseline.FullName
+
+# Опционально: явный сертификат для certutil -verify -urlfetch
+# .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output -BaselinePath $baseline.FullName -CertificatePath "C:\certs\test.cer"
 ```
 
 Просмотрите отчёт валидации:
+
+Если `-CertificatePath` не указан, скрипт автоматически пытается найти сертификат в baseline или в `CertEnroll`.
 
 ```powershell
 notepad .\output\validation_report_*.md

@@ -133,8 +133,12 @@ Read-only аудит текущего состояния PKI-инфрастру�
 ### 3. Валидация
 
 ```powershell
-.\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output
+.\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output -BaselinePath .\output\baseline_*.json
+# Опционально: явный сертификат для certutil -verify -urlfetch
+# .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output -BaselinePath .\output\baseline_*.json -CertificatePath "C:\certs\test.cer"
 ```
+
+Примечание: если `-CertificatePath` не указан, скрипт пытается автоматически выбрать сертификат из baseline или из `CertEnroll`.
 
 ### 4. Выравнивание (WhatIf режим)
 

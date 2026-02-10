@@ -105,7 +105,7 @@ function Get-CA0Info {
     # Попытка получить FQDN
     $fqdn = $null
     try {
-        $fqdn = [System.Net.Dns]::GetHostByName($hostname).HostName
+        $fqdn = [System.Net.Dns]::GetHostEntry($hostname).HostName
     }
     catch {
         Write-Warning "Не удалось определить FQDN через DNS: $_"

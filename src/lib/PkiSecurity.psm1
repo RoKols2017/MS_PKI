@@ -28,9 +28,11 @@ function Test-PathTraversal {
         # Нормализация путей
         $resolvedPath = [System.IO.Path]::GetFullPath($Path)
         $resolvedBase = [System.IO.Path]::GetFullPath($BasePath)
-        
-        # Проверка, что путь находится внутри базового пути
-        return $resolvedPath.StartsWith($resolvedBase, [System.StringComparison]::OrdinalIgnoreCase)
+
+        # Проверка с учетом границ сегментов пути
+        $pathForCompare = $resolvedPath.TrimEnd('\\', '/') + '\\'
+        $baseForCompare = $resolvedBase.TrimEnd('\\', '/') + '\\'
+        return $pathForCompare.StartsWith($baseForCompare, [System.StringComparison]::OrdinalIgnoreCase)
     }
     catch {
         Write-Warning "Ошибка проверки path traversal: $_"
@@ -258,10 +260,38 @@ function Test-WritePermissions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Path
+        [string]$Path,
+
+        [ValidateSet('FileSystem', 'Registry')]
+        [string]$Provider = 'FileSystem'
     )
     
     try {
+        if ($Provider -eq 'Registry') {
+            if (-not (Test-Path $Path)) {
+                return @{
+                    HasPermission = $false
+                    Reason = "Ключ реестра не существует: $Path"
+                }
+            }
+
+            $testProperty = "pki_test_$([System.Guid]::NewGuid().ToString('N'))"
+            try {
+                New-ItemProperty -Path $Path -Name $testProperty -PropertyType String -Value 'test' -Force -ErrorAction Stop | Out-Null
+                Remove-ItemProperty -Path $Path -Name $testProperty -Force -ErrorAction SilentlyContinue
+                return @{
+                    HasPermission = $true
+                    Reason = ''
+                }
+            }
+            catch {
+                return @{
+                    HasPermission = $false
+                    Reason = "Нет прав на запись в реестр: $_"
+                }
+            }
+        }
+
         # Проверка существования пути
         if (-not (Test-Path $Path)) {
             # Проверка прав на создание в родительской директории

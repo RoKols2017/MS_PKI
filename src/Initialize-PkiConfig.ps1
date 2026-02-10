@@ -137,7 +137,7 @@ function Get-DomainInfo {
     
     try {
         # Попытка через WMI
-        $computerSystem = Get-WmiObject -Class Win32_ComputerSystem
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem
         $domainName = $computerSystem.Domain
         if ($domainName) {
             $script:DetectedValues.domain = @{
@@ -219,7 +219,7 @@ function Get-CA1Info {
     
     # Hostname и DNS
     $hostname = $env:COMPUTERNAME
-    $fqdn = [System.Net.Dns]::GetHostByName($hostname).HostName
+    $fqdn = [System.Net.Dns]::GetHostEntry($hostname).HostName
     
     # Если есть домен, формируем полный FQDN
     if ($script:DetectedValues.domain -and $script:DetectedValues.domain.fqdn) {

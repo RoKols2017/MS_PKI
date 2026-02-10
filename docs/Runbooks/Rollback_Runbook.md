@@ -93,7 +93,10 @@ $changeIds = @(
 # Проверка статуса после отката
 .\src\pki-validate\Invoke-PkiValidation.ps1 `
     -ConfigPath .\config\env.json `
-    -OutputPath .\output
+    -OutputPath .\output `
+    -BaselinePath .\output\baseline_*.json
+
+# Опционально: -CertificatePath "C:\certs\test.cer"
 
 # Повторный аудит для сравнения
 .\src\pki-audit\Invoke-PkiAudit.ps1 `

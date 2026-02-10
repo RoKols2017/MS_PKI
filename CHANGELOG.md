@@ -4,6 +4,22 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
 
+## [1.2.0] - 2026-02-10
+
+### Изменено
+- Полностью актуализирован `Invoke-PkiAlignment.ps1`: исправлен синтаксис, сохранены режимы `WhatIf/Apply`, экспорт плана выравнивания и применение изменений по action type.
+- `Invoke-PkiRollback.ps1` обновлён для работы с сериализуемым планом изменений (без scriptblock в JSON), добавлен fallback по `category` и поддержка `ShouldProcess`.
+- `Invoke-PkiValidation.ps1`: добавлен параметр `-CertificatePath` для явного сертификата в `certutil -verify -urlfetch`, добавлен безопасный fallback автопоиска сертификата.
+- `Initialize-PkiConfig.ps1` и `Get-CA0Config.ps1`: заменены deprecated вызовы DNS/WMI на актуальные API.
+
+### Безопасность
+- `PkiSecurity.psm1`: усилена защита от path traversal (проверка границ сегментов пути).
+- `PkiSecurity.psm1`: `Test-WritePermissions` расширен режимом `-Provider Registry` для корректной проверки прав записи в реестр.
+
+### Документация
+- Актуализированы примеры запуска в `README.md`, `QUICKSTART.md`, `docs/00_Overview.md`, `docs/ADMIN_START_GUIDE.md`, `docs/WHERE_TO_RUN_SCRIPTS.md`, `docs/Runbooks/Rollback_Runbook.md`.
+- Добавлены пояснения по использованию `-CertificatePath` в сценариях валидации.
+
 ## [1.1.1] - 2026-01-26
 
 ### Исправлено

@@ -203,6 +203,7 @@ CA1 (Enterprise Issuing CA)
 
 ```powershell
 .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output -BaselinePath .\output\baseline_*.json
+# Опционально: -CertificatePath "C:\certs\test.cer"
 ```
 
 ### 4. Выравнивание (WhatIf режим)
