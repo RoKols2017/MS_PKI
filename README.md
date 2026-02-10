@@ -93,6 +93,14 @@ Read-only аудит текущего состояния PKI-инфрастру�
 
 ## Быстрый старт
 
+### Предварительная smoke-проверка (рекомендуется)
+
+Перед рабочим запуском выполните единый smoke-прогон в `-WhatIf` режиме (PowerShell от имени администратора, запуск из корня проекта):
+
+```powershell
+$ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\output\smoke | Out-Null; $baseline=(Get-ChildItem .\output\baseline_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1); if(-not $baseline){ & .\src\pki-audit\Invoke-PkiAudit.ps1 -Role All -OutputPath .\output\smoke -ConfigPath .\config\env.json -WhatIf; $baseline=(Get-ChildItem .\output\baseline_*.json,.\output\smoke\baseline_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1) }; & .\src\Initialize-PkiConfig.ps1 -WhatIf; & .\src\pki-audit\Invoke-PkiAudit.ps1 -Role All -OutputPath .\output\smoke -ConfigPath .\config\env.json -WhatIf; & .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output\smoke -BaselinePath $baseline.FullName; & .\src\pki-align\Invoke-PkiAlignment.ps1 -ConfigPath .\config\env.json -OutputPath .\output\smoke -BaselinePath $baseline.FullName -WhatIf; $plan=(Get-ChildItem .\output\smoke\alignment_plan_*.json,.\output\alignment_plan_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1); if($plan){ & .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath $plan.FullName -OutputPath .\output\smoke -All -WhatIf } else { Write-Host 'Rollback smoke skipped: alignment plan not found.' -ForegroundColor Yellow }
+```
+
 ### 1. Конфигурация
 
 **Автоматическое заполнение (рекомендуется):**

@@ -78,6 +78,16 @@ notepad config\env.json
 
 ## Шаг 2: Первый запуск (Аудит)
 
+### 1.4. Smoke-проверка перед использованием (рекомендуется)
+
+Перед рабочим запуском выполните единый smoke-прогон в `-WhatIf` режиме (PowerShell **от имени администратора**, запуск из корня проекта):
+
+```powershell
+$ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\output\smoke | Out-Null; $baseline=(Get-ChildItem .\output\baseline_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1); if(-not $baseline){ & .\src\pki-audit\Invoke-PkiAudit.ps1 -Role All -OutputPath .\output\smoke -ConfigPath .\config\env.json -WhatIf; $baseline=(Get-ChildItem .\output\baseline_*.json,.\output\smoke\baseline_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1) }; & .\src\Initialize-PkiConfig.ps1 -WhatIf; & .\src\pki-audit\Invoke-PkiAudit.ps1 -Role All -OutputPath .\output\smoke -ConfigPath .\config\env.json -WhatIf; & .\src\pki-validate\Invoke-PkiValidation.ps1 -ConfigPath .\config\env.json -OutputPath .\output\smoke -BaselinePath $baseline.FullName; & .\src\pki-align\Invoke-PkiAlignment.ps1 -ConfigPath .\config\env.json -OutputPath .\output\smoke -BaselinePath $baseline.FullName -WhatIf; $plan=(Get-ChildItem .\output\smoke\alignment_plan_*.json,.\output\alignment_plan_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1); if($plan){ & .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath $plan.FullName -OutputPath .\output\smoke -All -WhatIf } else { Write-Host 'Rollback smoke skipped: alignment plan not found.' -ForegroundColor Yellow }
+```
+
+Ожидаемый результат: все сценарии выполняются без критических ошибок, а отчёты/логи пишутся в `.\output\smoke`.
+
 ### 2.1. Создание директории для результатов
 
 ```powershell
