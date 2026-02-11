@@ -361,6 +361,7 @@ function Invoke-ApplyChanges {
 
     $appliedCount = 0
     $failedCount = 0
+    $restartNeeded = $false
 
     foreach ($change in $script:AlignmentPlan.changes) {
         try {
@@ -369,6 +370,11 @@ function Invoke-ApplyChanges {
                 if ($ok) {
                     $change.applied = $true
                     $appliedCount++
+                    
+                    # Check if this change requires service restart
+                    if ($change.actionType -eq 'CRL_Publication') {
+                        $restartNeeded = $true
+                    }
                 }
                 else {
                     $failedCount++
@@ -378,6 +384,19 @@ function Invoke-ApplyChanges {
         catch {
             $failedCount++
             Write-Log -Level Error -Message "Apply error: $_ (ID: $($change.changeId))" -Exception $_ -Operation 'Alignment' -OutputPath $OutputPath
+        }
+    }
+
+    if ($restartNeeded) {
+        Write-Log -Level Info -Message "Restarting CertSvc to apply changes..." -Operation 'Alignment' -OutputPath $OutputPath
+        try {
+            $serviceName = if ($config.ca1.serviceName) { $config.ca1.serviceName } else { "CertSvc" }
+            Restart-Service -Name $serviceName -Force -ErrorAction Stop
+            Write-Log -Level Info -Message "Service $serviceName restarted successfully." -Operation 'Alignment' -OutputPath $OutputPath
+        }
+        catch {
+             Write-Log -Level Error -Message "Failed to restart service: $_" -Operation 'Alignment' -OutputPath $OutputPath
+             Write-Warning "⚠️ Failed to restart service. Please restart it manually."
         }
     }
 

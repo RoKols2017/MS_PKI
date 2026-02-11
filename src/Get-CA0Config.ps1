@@ -75,28 +75,22 @@ function Get-CA0Info {
     
     Write-Host "Найдена CA конфигурация: $caName" -ForegroundColor Gray
     
-    # Получение информации через certutil
-    $caInfo = $null
-    $commonName = $null
+    # Получение информации из реестра
+    $caInfo = @{
+        CAName = $caName
+        CommonName = $caName
+    }
+    $commonName = $caName
     
     try {
-        $output = & certutil -cainfo 2>&1
-        foreach ($line in $output) {
-            if ($line -match 'CA Name:\s*(.+)') {
-                $caInfo = @{
-                    CAName = $matches[1].Trim()
-                }
-            }
-            if ($line -match 'Common Name:\s*(.+)') {
-                if ($caInfo) {
-                    $caInfo.CommonName = $matches[1].Trim()
-                    $commonName = $matches[1].Trim()
-                }
-            }
+        $cnReg = (Get-ItemProperty -Path $caConfig.PSPath -Name "CommonName" -ErrorAction SilentlyContinue).CommonName
+         if ($cnReg) {
+            $caInfo.CommonName = $cnReg
+            $commonName = $cnReg
         }
     }
     catch {
-        Write-Warning "Не удалось получить информацию через certutil: $_"
+        Write-Warning "Не удалось получить CommonName из реестра: $_"
     }
     
     # Hostname и DNS
@@ -125,12 +119,14 @@ function Get-CA0Info {
     # Определение типа CA
     $caType = "StandaloneRootCA"  # По умолчанию для Root CA
     try {
-        $caEntry = Get-ItemProperty -Path $caConfig.PSPath -ErrorAction SilentlyContinue
-        if ($caEntry) {
-            # Проверка типа через certutil
-            $output = & certutil -getreg CA\CAType 2>&1
-            if ($output -match 'Enterprise') {
-                $caType = "EnterpriseRootCA"
+        $catypeReg = (Get-ItemProperty -Path $caConfig.PSPath -Name "CAType" -ErrorAction SilentlyContinue).CAType
+        
+        if ($catypeReg -ne $null) {
+            switch ($catypeReg) {
+                0 { $caType = "EnterpriseRootCA" }
+                1 { $caType = "EnterpriseSubordinateCA" }
+                3 { $caType = "StandaloneRootCA" }
+                4 { $caType = "StandaloneSubordinateCA" }
             }
         }
     }

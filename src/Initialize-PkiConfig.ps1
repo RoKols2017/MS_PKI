@@ -196,25 +196,20 @@ function Get-CA1Info {
     $caConfig = $caConfigs | Select-Object -First 1
     $caName = $caConfig.PSChildName
     
-    # Получение информации через certutil
-    $caInfo = $null
+    # Получение информации из реестра (более надежно, чем certutil парсинг)
+    $caInfo = @{
+        CAName = $caName
+        CommonName = $caName
+    }
+    
     try {
-        $output = & certutil -cainfo 2>&1
-        foreach ($line in $output) {
-            if ($line -match 'CA Name:\s*(.+)') {
-                $caInfo = @{
-                    CAName = $matches[1].Trim()
-                }
-            }
-            if ($line -match 'Common Name:\s*(.+)') {
-                if ($caInfo) {
-                    $caInfo.CommonName = $matches[1].Trim()
-                }
-            }
+        $commonName = (Get-ItemProperty -Path $caConfig.PSPath -Name "CommonName" -ErrorAction SilentlyContinue).CommonName
+        if ($commonName) {
+            $caInfo.CommonName = $commonName
         }
     }
     catch {
-        Write-Warning "Не удалось получить информацию через certutil: $_"
+        Write-Warning "Не удалось получить CommonName из реестра: $_"
     }
     
     # Hostname и DNS
@@ -228,16 +223,36 @@ function Get-CA1Info {
         }
     }
     
-    # Определение типа CA
-    $caType = "EnterpriseSubordinateCA"  # По умолчанию для Issuing CA
+    # Определение типа CA через реестр
+    $caType = "EnterpriseSubordinateCA"  # По умолчанию
     try {
-        $caEntry = Get-ItemProperty -Path $caConfig.PSPath -ErrorAction SilentlyContinue
-        if ($caEntry) {
-            # Проверка типа через реестр или certutil
-            $output = & certutil -getreg CA\CAType 2>&1
-            if ($output -match 'Standalone') {
-                $caType = "StandaloneRootCA"
+        # Сначала проверяем SetupStatus
+        # 6.6 SetupStatus:
+        # bit 0: CA_SETUP_ENTERPRISE_FLAG (1)
+        # bit 1: ?? 
+        
+        $catypeReg = (Get-ItemProperty -Path $caConfig.PSPath -Name "CAType" -ErrorAction SilentlyContinue).CAType
+        
+        # CAType values:
+        # 0 = Enterprise Root CA
+        # 1 = Enterprise Subordinate CA
+        # 3 = Standalone Root CA
+        # 4 = Standalone Subordinate CA
+        
+        if ($catypeReg -ne $null) {
+            switch ($catypeReg) {
+                0 { $caType = "EnterpriseRootCA" }
+                1 { $caType = "EnterpriseSubordinateCA" }
+                3 { $caType = "StandaloneRootCA" }
+                4 { $caType = "StandaloneSubordinateCA" }
             }
+        }
+        else {
+             # Fallback check
+             $output = & certutil -getreg CA\CAType 2>&1
+             if ($output -match 'Standalone') {
+                $caType = "StandaloneRootCA"
+             }
         }
     }
     catch {
