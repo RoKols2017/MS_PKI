@@ -4,6 +4,18 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
 
+## [1.3.0] - 2026-02-16
+
+### Исправлено
+- `Invoke-PkiAudit.ps1`: защита от null config — все обращения к `$script:AuditData.config.*` теперь с проверкой наличия config и вложенных свойств. Добавлено предупреждение при отсутствии ConfigPath для ролей All/IIS/Client.
+- `Invoke-PkiAlignment.ps1`: формирование CRL URL использует `dnsName` (FQDN) вместо `hostname` для корректной работы с клиентами.
+- `Invoke-PkiAlignment.ps1` и `Invoke-PkiRollback.ps1`: получение имени CA через `Get-ChildItem` вместо ненадёжного `Get-ItemProperty` с wildcard в пути реестра.
+- `Invoke-PkiValidation.ps1`: null-проверки для config.endpoints, config.iis, config.ca1, config.monitoring, baseline.ca1.registry, config.crlPolicyTargets.
+
+### Добавлено
+- `PkiCommon.psm1`: функция `Test-PkiConfig` для валидации обязательных полей env.json. Параметр `-ForAlignment` для проверки полей, необходимых Alignment.
+- Вызов `Test-PkiConfig` после загрузки конфигурации в `Invoke-PkiValidation.ps1` и `Invoke-PkiAlignment.ps1`.
+
 ## [1.2.0] - 2026-02-10
 
 ### Изменено

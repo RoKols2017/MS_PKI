@@ -1,4 +1,4 @@
-﻿# Invoke-PkiAudit.ps1
+# Invoke-PkiAudit.ps1
 # Phase 1: AS-IS Audit (Read-Only)
 # Автоматизированный аудит PKI-инфраструктуры на базе Microsoft AD CS
 
@@ -64,6 +64,9 @@ if ($ConfigPath -and (Test-Path $ConfigPath)) {
         Write-Log -Level Warning -Message "Ошибка загрузки конфигурации: $_" -Operation 'Audit' -OutputPath $OutputPath
     }
 }
+elseif ($Role -in @('All', 'IIS', 'Client')) {
+    Write-Log -Level Warning -Message "Конфигурация не загружена (ConfigPath пустой или файл не найден). Роли IIS/Client используют значения по умолчанию. Рекомендуется указать -ConfigPath." -Operation 'Audit' -OutputPath $OutputPath
+}
 
 # Создание директорий для evidence
 $evidencePath = Join-Path $OutputPath "evidence_$(Get-Timestamp)"
@@ -105,7 +108,7 @@ function Invoke-CA0Audit {
     }
     
     # CRL файлы
-    $certEnrollPath = if ($script:AuditData.config.iis.certEnrollPath) {
+    $certEnrollPath = if ($script:AuditData.config -and $script:AuditData.config.iis -and $script:AuditData.config.iis.certEnrollPath) {
         $script:AuditData.config.iis.certEnrollPath
     }
     else {
@@ -205,7 +208,7 @@ function Invoke-CA1Audit {
     }
     
     # Статус службы CertSvc
-    $serviceName = if ($script:AuditData.config.ca1.serviceName) {
+    $serviceName = if ($script:AuditData.config -and $script:AuditData.config.ca1 -and $script:AuditData.config.ca1.serviceName) {
         $script:AuditData.config.ca1.serviceName
     }
     else {
@@ -223,7 +226,7 @@ function Invoke-CA1Audit {
     }
     
     # CRL файлы
-    $certEnrollPath = if ($script:AuditData.config.iis.certEnrollPath) {
+    $certEnrollPath = if ($script:AuditData.config -and $script:AuditData.config.iis -and $script:AuditData.config.iis.certEnrollPath) {
         $script:AuditData.config.iis.certEnrollPath
     }
     else {
@@ -279,7 +282,7 @@ function Invoke-IisAudit {
         applicationHost = $null
     }
     
-    $siteName = if ($script:AuditData.config.iis.siteName) {
+    $siteName = if ($script:AuditData.config -and $script:AuditData.config.iis -and $script:AuditData.config.iis.siteName) {
         $script:AuditData.config.iis.siteName
     }
     else {
@@ -323,14 +326,10 @@ function Invoke-IisAudit {
     
     # ACL для PKI директорий
     $pkiPaths = @()
-    if ($script:AuditData.config.paths.pkiWebRoot) {
-        $pkiPaths += $script:AuditData.config.paths.pkiWebRoot
-    }
-    if ($script:AuditData.config.paths.pkiAiaPath) {
-        $pkiPaths += $script:AuditData.config.paths.pkiAiaPath
-    }
-    if ($script:AuditData.config.paths.pkiCdpPath) {
-        $pkiPaths += $script:AuditData.config.paths.pkiCdpPath
+    if ($script:AuditData.config -and $script:AuditData.config.paths) {
+        if ($script:AuditData.config.paths.pkiWebRoot) { $pkiPaths += $script:AuditData.config.paths.pkiWebRoot }
+        if ($script:AuditData.config.paths.pkiAiaPath) { $pkiPaths += $script:AuditData.config.paths.pkiAiaPath }
+        if ($script:AuditData.config.paths.pkiCdpPath) { $pkiPaths += $script:AuditData.config.paths.pkiCdpPath }
     }
     
     foreach ($path in $pkiPaths) {
@@ -343,7 +342,7 @@ function Invoke-IisAudit {
     }
     
     # HTTP endpoints health check
-    if ($script:AuditData.config.endpoints.healthCheck) {
+    if ($script:AuditData.config -and $script:AuditData.config.endpoints -and $script:AuditData.config.endpoints.healthCheck) {
         foreach ($url in $script:AuditData.config.endpoints.healthCheck) {
             $healthCheck = Test-HttpEndpoint -Url $url -CheckContent
             $iisData.httpEndpoints += $healthCheck
@@ -425,7 +424,7 @@ function Invoke-ClientAudit {
             'Microsoft-Windows-CertificateServicesClient-AutoEnrollment'
         )
         
-        $lookbackHours = if ($script:AuditData.config.monitoring.eventLogs.lookbackHours) {
+        $lookbackHours = if ($script:AuditData.config -and $script:AuditData.config.monitoring -and $script:AuditData.config.monitoring.eventLogs -and $script:AuditData.config.monitoring.eventLogs.lookbackHours) {
             $script:AuditData.config.monitoring.eventLogs.lookbackHours
         }
         else {

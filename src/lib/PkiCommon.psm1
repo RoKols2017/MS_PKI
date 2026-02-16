@@ -1,4 +1,4 @@
-﻿# PkiCommon.psm1
+# PkiCommon.psm1
 # Общие функции для работы с PKI
 
 function Import-PkiConfig {
@@ -23,6 +23,58 @@ function Import-PkiConfig {
     catch {
         throw "Ошибка загрузки конфигурации: $_"
     }
+}
+
+function Test-PkiConfig {
+    <#
+    .SYNOPSIS
+    Проверяет наличие обязательных полей в конфигурации env.json.
+    
+    .PARAMETER Config
+    Объект конфигурации (результат Import-PkiConfig).
+    
+    .PARAMETER ForAlignment
+    Если указан, проверяются дополнительные поля, необходимые для Alignment.
+    
+    .OUTPUTS
+    $true если конфигурация валидна. Иначе выбрасывает исключение.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Config,
+        
+        [switch]$ForAlignment
+    )
+    
+    $required = @('domain', 'ca0', 'ca1', 'iis', 'paths', 'endpoints')
+    foreach ($key in $required) {
+        if ($null -eq $Config.$key) {
+            throw "Обязательное поле конфигурации отсутствует: $key"
+        }
+    }
+    
+    # Проверка критичных вложенных полей
+    if (-not $Config.ca1.name) {
+        throw "Обязательное поле конфигурации отсутствует: ca1.name"
+    }
+    if (-not $Config.iis.siteName) {
+        throw "Обязательное поле конфигурации отсутствует: iis.siteName"
+    }
+    if (-not $Config.iis.certEnrollPath) {
+        throw "Обязательное поле конфигурации отсутствует: iis.certEnrollPath"
+    }
+    
+    if ($ForAlignment) {
+        if (-not $Config.namespaces -or -not $Config.namespaces.canonical -or -not $Config.namespaces.canonical.cdp) {
+            throw "Обязательное поле для Alignment отсутствует: namespaces.canonical.cdp"
+        }
+        if (-not $Config.copyRules) {
+            throw "Обязательное поле для Alignment отсутствует: copyRules"
+        }
+    }
+    
+    return $true
 }
 
 function Test-Administrator {
@@ -213,4 +265,4 @@ function ConvertTo-SafeJson {
     }
 }
 
-Export-ModuleMember -Function Import-PkiConfig, Test-Administrator, Assert-Administrator, Get-CertUtilOutput, Get-RegistryValue, Export-RegistryBackup, Get-ServiceStatus, Test-PathExists, Get-Timestamp, ConvertTo-SafeJson
+Export-ModuleMember -Function Import-PkiConfig, Test-PkiConfig, Test-Administrator, Assert-Administrator, Get-CertUtilOutput, Get-RegistryValue, Export-RegistryBackup, Get-ServiceStatus, Test-PathExists, Get-Timestamp, ConvertTo-SafeJson

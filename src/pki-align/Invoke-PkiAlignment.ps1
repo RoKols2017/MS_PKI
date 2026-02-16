@@ -47,6 +47,7 @@ catch {
 }
 
 $config = Import-PkiConfig -ConfigPath $ConfigPath
+Test-PkiConfig -Config $config -ForAlignment | Out-Null
 
 $baseline = $null
 if ($BaselinePath -and (Test-Path $BaselinePath)) {
@@ -217,7 +218,8 @@ function Invoke-AlignCRLPublication {
     }
 
     if (-not $hasCanonical) {
-        $newUrl = "http://$($config.ca1.hostname)$canonicalCdp/{CAName}{CRLNameSuffix}{DeltaCRLAllowed}.crl"
+        $hostForUrl = if ($config.ca1.dnsName) { $config.ca1.dnsName } else { $config.ca1.hostname }
+        $newUrl = "http://$hostForUrl$canonicalCdp/{CAName}{CRLNameSuffix}{DeltaCRLAllowed}.crl"
         $urlValidation = Test-UrlFormat -Url $newUrl
         if (-not $urlValidation.Valid) {
             Write-Log -Level Error -Message "Invalid URL format: $($urlValidation.Reason)" -Operation 'Alignment' -OutputPath $OutputPath
@@ -319,11 +321,11 @@ function Invoke-ApplyChange {
         'CRL_Publication' {
             $caCheck = Test-CAExists
             if (-not $caCheck.Exists) { return $false }
-            $regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\*'
-            $caConfig = Get-ItemProperty -Path $regPath -ErrorAction Stop | Select-Object -First 1
-            if (-not $caConfig -or -not $caConfig.PSChildName) { return $false }
-
-            $fullRegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\$($caConfig.PSChildName)"
+            $regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration'
+            $caKey = Get-ChildItem -Path $regPath -ErrorAction Stop | Select-Object -First 1
+            if (-not $caKey) { return $false }
+            $caName = $caKey.PSChildName
+            $fullRegPath = Join-Path $regPath $caName
             $permCheck = Test-WritePermissions -Path $fullRegPath -Provider Registry
             if (-not $permCheck.HasPermission) { return $false }
 

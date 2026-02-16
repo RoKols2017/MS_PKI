@@ -1,4 +1,4 @@
-﻿# Invoke-PkiRollback.ps1
+# Invoke-PkiRollback.ps1
 # Откат применённых изменений PKI выравнивания
 
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -120,21 +120,15 @@ function Invoke-ChangeRollback {
             try {
                 $oldUrls = $Change.oldValue.urls
 
-                $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\*"
-                $caConfigs = Get-ItemProperty -Path $regPath -ErrorAction Stop
-                if (-not $caConfigs) {
+                $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration"
+                $caKey = Get-ChildItem -Path $regPath -ErrorAction Stop | Select-Object -First 1
+                if (-not $caKey) {
                     Write-Log -Level Error -Message "CA конфигурация не найдена при rollback" -Operation 'Rollback' -OutputPath $OutputPath
                     return $false
                 }
 
-                $caConfig = $caConfigs | Select-Object -First 1
-                if (-not $caConfig -or -not $caConfig.PSChildName) {
-                    Write-Log -Level Error -Message "Не удалось определить имя CA при rollback" -Operation 'Rollback' -OutputPath $OutputPath
-                    return $false
-                }
-
-                $caName = $caConfig.PSChildName
-                $fullRegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\$caName"
+                $caName = $caKey.PSChildName
+                $fullRegPath = Join-Path $regPath $caName
 
                 Set-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -Value $oldUrls -ErrorAction Stop
                 Write-Log -Level Info -Message "CRLPublicationURLs откачен к предыдущему значению" -Operation 'Rollback' -OutputPath $OutputPath

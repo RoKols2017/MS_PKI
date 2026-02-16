@@ -1,4 +1,4 @@
-﻿# Invoke-PkiValidation.ps1
+# Invoke-PkiValidation.ps1
 # Валидация PKI-инфраструктуры: проверка здоровья и соответствия best practices
 
 [CmdletBinding()]
@@ -41,6 +41,7 @@ Write-Log -Level Info -Message "Начало валидации PKI" -Operation 
 
 # Загрузка конфигурации
 $config = Import-PkiConfig -ConfigPath $ConfigPath
+Test-PkiConfig -Config $config | Out-Null
 
 # Загрузка baseline (если указан)
 $baseline = $null
@@ -99,7 +100,7 @@ function Add-ValidationCheck {
 function Test-CRLHttpAvailability {
     Write-Log -Level Info -Message "Проверка доступности CRL по HTTP" -Operation 'Validation' -OutputPath $OutputPath
     
-    if (-not $config.endpoints.crlUrls) {
+    if (-not $config.endpoints -or -not $config.endpoints.crlUrls) {
         Add-ValidationCheck -Name 'CRL_HTTP_Availability' -Category 'CRL' -Status 'Warning' -Message 'CRL URLs не настроены в конфигурации'
         return
     }
@@ -132,7 +133,7 @@ function Test-CRLHttpAvailability {
 function Test-CRLExpiry {
     Write-Log -Level Info -Message "Проверка срока действия CRL" -Operation 'Validation' -OutputPath $OutputPath
     
-    $certEnrollPath = $config.iis.certEnrollPath
+    $certEnrollPath = if ($config.iis -and $config.iis.certEnrollPath) { $config.iis.certEnrollPath } else { 'C:\Windows\System32\CertSrv\CertEnroll' }
     if (-not (Test-Path $certEnrollPath)) {
         Add-ValidationCheck -Name 'CRL_Expiry' -Category 'CRL' -Status 'Warning' -Message "CertEnroll путь не найден: $certEnrollPath"
         return
@@ -144,7 +145,7 @@ function Test-CRLExpiry {
         return
     }
     
-    $thresholdDays = if ($config.monitoring.crlExpiryThresholdDays) {
+    $thresholdDays = if ($config.monitoring -and $config.monitoring.crlExpiryThresholdDays) {
         $config.monitoring.crlExpiryThresholdDays
     }
     else {
@@ -187,10 +188,7 @@ function Test-CRLExpiry {
 function Test-CAServiceHealth {
     Write-Log -Level Info -Message "Проверка здоровья CA сервиса" -Operation 'Validation' -OutputPath $OutputPath
     
-    $serviceName = $config.ca1.serviceName
-    if (-not $serviceName) {
-        $serviceName = 'CertSvc'
-    }
+    $serviceName = if ($config.ca1 -and $config.ca1.serviceName) { $config.ca1.serviceName } else { 'CertSvc' }
     
     $service = Get-ServiceStatus -ServiceName $serviceName
     if (-not $service) {
@@ -215,7 +213,7 @@ function Test-CAServiceHealth {
 function Test-IisMimeTypes {
     Write-Log -Level Info -Message "Проверка MIME типов IIS" -Operation 'Validation' -OutputPath $OutputPath
     
-    $siteName = $config.iis.siteName
+    $siteName = if ($config.iis -and $config.iis.siteName) { $config.iis.siteName } else { 'Default Web Site' }
     $requiredMimeTypes = @(
         @{ Extension = '.crl'; MimeType = 'application/pkix-crl' }
         @{ Extension = '.crt'; MimeType = 'application/x-x509-ca-cert' }
@@ -288,9 +286,13 @@ function Test-CRLPolicyCompliance {
     }
     
     # Проверка для Issuing CA
-    if ($baseline.ca1.registry.CRL) {
-        $crl = $baseline.ca1.registry.CRL
-        $target = $config.crlPolicyTargets.issuing
+    if (-not $baseline.ca1 -or -not $baseline.ca1.registry -or -not $baseline.ca1.registry.CRL) {
+        Add-ValidationCheck -Name 'CRL_Policy_Compliance' -Category 'CRL' -Status 'Warning' -Message 'Данные CA1/CRL в baseline отсутствуют, проверка пропущена'
+        return
+    }
+    $crl = $baseline.ca1.registry.CRL
+    $target = if ($config.crlPolicyTargets -and $config.crlPolicyTargets.issuing) { $config.crlPolicyTargets.issuing } else { $null }
+    if ($target) {
         
         $issues = @()
         
@@ -319,6 +321,9 @@ function Test-CRLPolicyCompliance {
         else {
             Add-ValidationCheck -Name 'CRL_Policy_Compliance' -Category 'CRL' -Status 'Pass' -Message "CRL политика соответствует best practices"
         }
+    }
+    else {
+        Add-ValidationCheck -Name 'CRL_Policy_Compliance' -Category 'CRL' -Status 'Warning' -Message 'crlPolicyTargets.issuing не настроен в конфигурации, проверка пропущена'
     }
 }
 
