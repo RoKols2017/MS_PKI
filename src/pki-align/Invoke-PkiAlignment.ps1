@@ -418,7 +418,9 @@ function Invoke-ApplyChange {
             $permCheck = Test-WritePermissions -Path $fullRegPath -Provider Registry
             if (-not $permCheck.HasPermission) { return $false }
 
-            Set-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -Value $Change.newValue.urls -ErrorAction Stop
+            $liveUrls = (Get-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -ErrorAction Stop).CRLPublicationURLs
+            $safeMergedUrls = Merge-CrlPublicationUrls -CurrentRaw $liveUrls -NewUrl $Change.newValue.newUrl
+            Set-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -Value $safeMergedUrls -ErrorAction Stop
             return $true
         }
         'CRL_Copy' {

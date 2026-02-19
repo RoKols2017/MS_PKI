@@ -294,8 +294,8 @@ function Test-CAService {
     param()
     
     try {
-        $output = Get-CertUtilOutput -Arguments @('-getconfig', '-', '-ping')
-        return ($LASTEXITCODE -eq 0)
+        $result = Get-CertUtilOutput -Arguments @('-getconfig', '-', '-ping') -IgnoreErrors -IncludeResult
+        return ($null -ne $result -and $result.ExitCode -eq 0)
     }
     catch {
         return $false

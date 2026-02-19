@@ -24,6 +24,7 @@
 
 ## Требования окружения
 - Windows Server (скрипты ориентированы на CA-серверы)
+- Текущий контур: CA0 (Offline Root CA) = Windows Server 2016; CA1 (Issuing CA) = Windows Server 2022
 - PowerShell 5.1+
 - AD CS и IIS для полных сценариев
 - Права администратора (многие скрипты завершаются с `exit 3` без них)

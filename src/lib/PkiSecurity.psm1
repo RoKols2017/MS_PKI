@@ -101,8 +101,8 @@ function Test-CAExists {
     
     try {
         # Проверка через certutil
-        $output = Get-CertUtilOutput -Arguments @('-getconfig', '-', '-ping') -IgnoreErrors
-        if ($LASTEXITCODE -eq 0) {
+        $result = Get-CertUtilOutput -Arguments @('-getconfig', '-', '-ping') -IgnoreErrors -IncludeResult
+        if ($null -ne $result -and $result.ExitCode -eq 0) {
             return @{
                 Exists = $true
                 Available = $true
@@ -110,11 +110,31 @@ function Test-CAExists {
         }
         
         # Дополнительная проверка через реестр
-        $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\$CAName"
-        if (Test-Path $regPath) {
+        $regRoot = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration'
+        if ($CAName -eq '*') {
+            $caKeys = @(Get-ChildItem -Path $regRoot -ErrorAction SilentlyContinue)
+            if ($caKeys.Count -gt 0) {
+                return @{
+                    Exists = $true
+                    Available = $false
+                }
+            }
+        }
+        else {
+            $regPath = Join-Path $regRoot $CAName
+            if (Test-Path $regPath) {
+                return @{
+                    Exists = $true
+                    Available = $false
+                }
+            }
+        }
+
+        if ($result -and $result.ExitCode -ne 0) {
             return @{
-                Exists = $true
+                Exists = $false
                 Available = $false
+                Error = "certutil ping failed with code $($result.ExitCode)"
             }
         }
         

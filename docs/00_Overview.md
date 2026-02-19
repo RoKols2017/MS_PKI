@@ -20,6 +20,7 @@ CA1 (Enterprise Issuing CA)
 
 - **CA0** — Offline Root CA (Standalone Root CA)
   - Работает в автономном режиме
+  - Windows Server 2016
   - CRL публикуется через IIS на CA1
   - Долгий срок действия CRL (6-12 месяцев)
 

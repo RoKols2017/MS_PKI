@@ -215,6 +215,11 @@ $ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\outpu
 - IIS установлен (для публикации AIA/CDP)
 - Права: Domain Admin или Local Administrator на CA серверах
 
+### Подтверждённая матрица ОС (текущий контур)
+
+- CA0 (Offline Root CA): Windows Server 2016
+- CA1 (Enterprise Issuing CA): Windows Server 2022
+
 ## Выходные данные
 
 ### Baseline JSON

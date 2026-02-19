@@ -204,6 +204,8 @@ function Get-CertUtilOutput {
         
         [switch]$IgnoreErrors,
 
+        [switch]$IncludeResult,
+
         [int]$TimeoutSeconds = 120,
 
         [int]$RetryCount = 1
@@ -223,12 +225,31 @@ function Get-CertUtilOutput {
             Write-Warning "certutil завершился с кодом $($result.ExitCode). Аргументы: $($Arguments -join ' ')"
         }
 
+        if ($IncludeResult) {
+            return [PSCustomObject]@{
+                ExitCode = [int]$result.ExitCode
+                Output   = $lines
+                StdOut   = $result.StdOut
+                StdErr   = $result.StdErr
+            }
+        }
+
         return $lines
     }
     catch {
         if (-not $IgnoreErrors) {
             throw "Ошибка выполнения certutil: $_"
         }
+
+        if ($IncludeResult) {
+            return [PSCustomObject]@{
+                ExitCode = -1
+                Output   = @()
+                StdOut   = ''
+                StdErr   = ''
+            }
+        }
+
         return $null
     }
 }
