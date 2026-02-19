@@ -22,6 +22,7 @@ param(
 #region Инициализация
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 $script:StartTime = Get-Date
 $script:AuditData = @{
     timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
@@ -130,6 +131,15 @@ function Invoke-CA0Audit {
     if ($ca0Data.certificate.Path) {
         $evidenceCertPath = Join-Path $evidencePath "ca0_certificate.cer"
         Copy-Item -Path $ca0Data.certificate.Path -Destination $evidenceCertPath -ErrorAction SilentlyContinue
+    }
+    elseif ($ca0Data.certificate.RawDataBase64) {
+        try {
+            $evidenceCertPath = Join-Path $evidencePath "ca0_certificate.cer"
+            [System.IO.File]::WriteAllBytes($evidenceCertPath, [System.Convert]::FromBase64String([string]$ca0Data.certificate.RawDataBase64))
+        }
+        catch {
+            Write-Log -Level Warning -Message "Ошибка экспорта сертификата CA0 в evidence: $_" -Operation 'CA0Audit' -OutputPath $OutputPath
+        }
     }
     
     foreach ($crlInfo in $ca0Data.crlFiles) {
@@ -248,6 +258,15 @@ function Invoke-CA1Audit {
     if ($ca1Data.certificate.Path) {
         $evidenceCertPath = Join-Path $evidencePath "ca1_certificate.cer"
         Copy-Item -Path $ca1Data.certificate.Path -Destination $evidenceCertPath -ErrorAction SilentlyContinue
+    }
+    elseif ($ca1Data.certificate.RawDataBase64) {
+        try {
+            $evidenceCertPath = Join-Path $evidencePath "ca1_certificate.cer"
+            [System.IO.File]::WriteAllBytes($evidenceCertPath, [System.Convert]::FromBase64String([string]$ca1Data.certificate.RawDataBase64))
+        }
+        catch {
+            Write-Log -Level Warning -Message "Ошибка экспорта сертификата CA1 в evidence: $_" -Operation 'CA1Audit' -OutputPath $OutputPath
+        }
     }
     
     foreach ($crlInfo in $ca1Data.crlFiles) {

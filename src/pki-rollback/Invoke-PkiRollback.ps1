@@ -10,6 +10,8 @@ param(
     [string]$OutputPath,
     
     [string[]]$ChangeIds = @(),
+
+    [string]$CAName = '',
     
     [switch]$All
 )
@@ -17,6 +19,7 @@ param(
 #region Инициализация
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 $script:StartTime = Get-Date
 
 # Импорт модулей
@@ -61,6 +64,35 @@ catch {
 #endregion
 
 #region Определение изменений для отката
+
+function Get-CaRegistryPath {
+    [CmdletBinding()]
+    param(
+        [string]$Name = ''
+    )
+
+    $regRoot = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration'
+    $caKeys = @(Get-ChildItem -Path $regRoot -ErrorAction Stop)
+
+    if ($caKeys.Count -eq 0) {
+        throw "CA configuration not found in registry: $regRoot"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        if ($caKeys.Count -eq 1) {
+            return (Join-Path $regRoot $caKeys[0].PSChildName)
+        }
+
+        throw 'Multiple CA configurations found; specify -CAName for rollback target.'
+    }
+
+    $matched = @($caKeys | Where-Object { $_.PSChildName -eq $Name })
+    if ($matched.Count -ne 1) {
+        throw "CA configuration '$Name' not found or ambiguous in registry."
+    }
+
+    return (Join-Path $regRoot $matched[0].PSChildName)
+}
 
 function Invoke-ChangeRollback {
     param(
@@ -119,16 +151,7 @@ function Invoke-ChangeRollback {
         'CRL_Publication' {
             try {
                 $oldUrls = $Change.oldValue.urls
-
-                $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration"
-                $caKey = Get-ChildItem -Path $regPath -ErrorAction Stop | Select-Object -First 1
-                if (-not $caKey) {
-                    Write-Log -Level Error -Message "CA конфигурация не найдена при rollback" -Operation 'Rollback' -OutputPath $OutputPath
-                    return $false
-                }
-
-                $caName = $caKey.PSChildName
-                $fullRegPath = Join-Path $regPath $caName
+                $fullRegPath = Get-CaRegistryPath -Name $CAName
 
                 Set-ItemProperty -Path $fullRegPath -Name 'CRLPublicationURLs' -Value $oldUrls -ErrorAction Stop
                 Write-Log -Level Info -Message "CRLPublicationURLs откачен к предыдущему значению" -Operation 'Rollback' -OutputPath $OutputPath

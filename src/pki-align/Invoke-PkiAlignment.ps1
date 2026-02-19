@@ -14,6 +14,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 $script:StartTime = Get-Date
 $script:AlignmentPlan = @{
     timestamp = Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'
@@ -58,6 +59,37 @@ if ($BaselinePath -and (Test-Path $BaselinePath)) {
     catch {
         Write-Log -Level Warning -Message "Baseline load error: $_" -Operation 'Alignment' -OutputPath $OutputPath
     }
+}
+
+function Get-CaRegistryPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Config
+    )
+
+    $regRoot = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration'
+    $caKeys = @(Get-ChildItem -Path $regRoot -ErrorAction Stop)
+
+    if ($caKeys.Count -eq 0) {
+        throw "CA configuration not found in registry: $regRoot"
+    }
+
+    $targetCaName = if ($Config.ca1 -and $Config.ca1.name) { [string]$Config.ca1.name } else { '' }
+    if ([string]::IsNullOrWhiteSpace($targetCaName)) {
+        if ($caKeys.Count -eq 1) {
+            return (Join-Path $regRoot $caKeys[0].PSChildName)
+        }
+
+        throw 'Multiple CA configurations found; config.ca1.name is required for unambiguous targeting.'
+    }
+
+    $matched = @($caKeys | Where-Object { $_.PSChildName -eq $targetCaName })
+    if ($matched.Count -ne 1) {
+        throw "CA configuration '$targetCaName' not found or ambiguous in registry."
+    }
+
+    return (Join-Path $regRoot $matched[0].PSChildName)
 }
 
 $rollbackPointName = if ($RollbackPointName) { $RollbackPointName } else { "alignment_$(Get-Timestamp)" }
@@ -321,11 +353,7 @@ function Invoke-ApplyChange {
         'CRL_Publication' {
             $caCheck = Test-CAExists
             if (-not $caCheck.Exists) { return $false }
-            $regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration'
-            $caKey = Get-ChildItem -Path $regPath -ErrorAction Stop | Select-Object -First 1
-            if (-not $caKey) { return $false }
-            $caName = $caKey.PSChildName
-            $fullRegPath = Join-Path $regPath $caName
+            $fullRegPath = Get-CaRegistryPath -Config $config
             $permCheck = Test-WritePermissions -Path $fullRegPath -Provider Registry
             if (-not $permCheck.HasPermission) { return $false }
 

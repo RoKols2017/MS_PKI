@@ -41,6 +41,7 @@ function Get-CACertificate {
                 NotAfter     = $cert.NotAfter
                 SerialNumber = $cert.SerialNumber
                 Path         = $null # Мы не сохраняем путь к временному файлу
+                RawDataBase64 = [System.Convert]::ToBase64String($cert.RawData)
             }
         }
         return $null
