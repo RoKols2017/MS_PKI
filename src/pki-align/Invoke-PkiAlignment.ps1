@@ -92,6 +92,70 @@ function Get-CaRegistryPath {
     return (Join-Path $regRoot $matched[0].PSChildName)
 }
 
+function Get-PublicationEntryUrl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Entry
+    )
+
+    $trimmed = $Entry.Trim()
+    if ($trimmed -match '^\d+:(.+)$') {
+        return $matches[1].Trim()
+    }
+
+    return $trimmed
+}
+
+function Merge-CrlPublicationUrls {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [string]$CurrentRaw,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NewUrl
+    )
+
+    $entries = @()
+    if (-not [string]::IsNullOrWhiteSpace($CurrentRaw)) {
+        $entries = @($CurrentRaw -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    $normalizedEntries = New-Object System.Collections.Generic.List[string]
+    foreach ($entry in $entries) {
+        $exists = $false
+        foreach ($existingEntry in $normalizedEntries) {
+            if ([string]::Equals($existingEntry, $entry, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $exists = $true
+                break
+            }
+        }
+
+        if (-not $exists) {
+            [void]$normalizedEntries.Add($entry)
+        }
+    }
+
+    foreach ($entry in $normalizedEntries) {
+        $entryUrl = Get-PublicationEntryUrl -Entry $entry
+        if ([string]::Equals($entryUrl, $NewUrl, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return ($normalizedEntries -join "`n")
+        }
+    }
+
+    $flagPrefix = '65'
+    foreach ($entry in $normalizedEntries) {
+        if ($entry -match '^(\d+):https?://') {
+            $flagPrefix = $matches[1]
+            break
+        }
+    }
+
+    [void]$normalizedEntries.Add("$flagPrefix:$NewUrl")
+    return ($normalizedEntries -join "`n")
+}
+
 $rollbackPointName = if ($RollbackPointName) { $RollbackPointName } else { "alignment_$(Get-Timestamp)" }
 $rollbackPath = Join-Path $OutputPath "backups\$rollbackPointName"
 Test-PathExists -Path $rollbackPath -CreateIfNotExists | Out-Null
@@ -239,27 +303,20 @@ function Invoke-AlignCRLPublication {
     $canonicalCdp = $config.namespaces.canonical.cdp
     if (-not $canonicalCdp) { return }
 
-    $hasCanonical = $false
-    if ($currentUrls) {
-        foreach ($url in ($currentUrls -split "`n" | Where-Object { $_.Trim() })) {
-            if ($url -match [regex]::Escape($canonicalCdp)) {
-                $hasCanonical = $true
-                break
-            }
-        }
+    $hostForUrl = if ($config.ca1.dnsName) { $config.ca1.dnsName } else { $config.ca1.hostname }
+    $newUrl = "http://$hostForUrl$canonicalCdp/{CAName}{CRLNameSuffix}{DeltaCRLAllowed}.crl"
+    $urlValidation = Test-UrlFormat -Url $newUrl
+    if (-not $urlValidation.Valid) {
+        Write-Log -Level Error -Message "Invalid URL format: $($urlValidation.Reason)" -Operation 'Alignment' -OutputPath $OutputPath
+        return
     }
 
-    if (-not $hasCanonical) {
-        $hostForUrl = if ($config.ca1.dnsName) { $config.ca1.dnsName } else { $config.ca1.hostname }
-        $newUrl = "http://$hostForUrl$canonicalCdp/{CAName}{CRLNameSuffix}{DeltaCRLAllowed}.crl"
-        $urlValidation = Test-UrlFormat -Url $newUrl
-        if (-not $urlValidation.Valid) {
-            Write-Log -Level Error -Message "Invalid URL format: $($urlValidation.Reason)" -Operation 'Alignment' -OutputPath $OutputPath
-            return
-        }
-
-        Add-ChangePlan -Category 'CRL_Publication' -Description 'Add canonical path into CRLPublicationURLs' -OldValue @{ urls = $currentUrls } -NewValue @{ urls = "$currentUrls`n$newUrl"; newUrl = $newUrl } -ActionType 'CRL_Publication'
+    $mergedUrls = Merge-CrlPublicationUrls -CurrentRaw $currentUrls -NewUrl $newUrl
+    if ([string]::Equals([string]$mergedUrls, [string]$currentUrls, [System.StringComparison]::Ordinal)) {
+        return
     }
+
+    Add-ChangePlan -Category 'CRL_Publication' -Description 'Add canonical path into CRLPublicationURLs' -OldValue @{ urls = $currentUrls } -NewValue @{ urls = $mergedUrls; newUrl = $newUrl } -ActionType 'CRL_Publication'
 }
 
 function Invoke-CopyCRLToIis {
