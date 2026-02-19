@@ -249,7 +249,12 @@ function Get-CA1Info {
         }
         else {
              # Fallback check
-             $output = & certutil -getreg CA\CAType 2>&1
+             if (Get-Command Get-CertUtilOutput -ErrorAction SilentlyContinue) {
+                 $output = Get-CertUtilOutput -Arguments @('-getreg', 'CA\CAType') -IgnoreErrors
+             }
+             else {
+                 $output = & certutil -getreg CA\CAType 2>&1
+             }
              if ($output -match 'Standalone') {
                 $caType = "StandaloneRootCA"
              }

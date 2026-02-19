@@ -189,7 +189,10 @@ function New-Backup {
             'IIS' {
                 Import-Module WebAdministration -ErrorAction Stop
                 $backupName = "pki_alignment_$(Get-Timestamp)"
-                & "$env:SystemRoot\System32\inetsrv\appcmd.exe" backup $backupName | Out-Null
+                $appCmdOutput = Get-AppCmdOutput -Arguments @('backup', $backupName)
+                if ($appCmdOutput.Count -eq 0) {
+                    Write-Log -Level Warning -Message 'appcmd backup completed without output.' -Operation 'Backup' -OutputPath $OutputPath
+                }
                 $backupInfo.path = "$env:SystemRoot\System32\inetsrv\backup\$backupName"
             }
             'Certificates' {

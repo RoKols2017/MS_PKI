@@ -156,18 +156,29 @@ notepad .\output\validation_report_*.md
 notepad .\output\alignment_plan_*.json
 ```
 
+Примечание: alignment определяет целевой CA по `config.ca1.name`; при множественных CA-конфигурациях это поле должно быть заполнено корректно.
+
 ## Шаг 5: Применение изменений (только после проверки!)
 
 **⚠️ ВНИМАНИЕ**: Применяйте изменения только после тщательной проверки плана!
 
 ```powershell
-# Применение изменений с backup
+# Этап 1: применение изменений с backup (без рестарта CertSvc)
 .\src\pki-align\Invoke-PkiAlignment.ps1 `
     -ConfigPath .\config\env.json `
     -OutputPath .\output `
     -BaselinePath $baseline.FullName `
     -Apply `
     -Backup
+
+# Этап 2 (опционально): рестарт CertSvc только в согласованное окно работ
+.\src\pki-align\Invoke-PkiAlignment.ps1 `
+    -ConfigPath .\config\env.json `
+    -OutputPath .\output `
+    -BaselinePath $baseline.FullName `
+    -Apply `
+    -Backup `
+    -RestartCertSvc
 ```
 
 ## Шаг 6: Проверка после изменений
@@ -232,6 +243,9 @@ $plan = Get-ChildItem .\output\alignment_plan_*.json | Sort-Object LastWriteTime
 
 # Выполнение отката
 .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath $plan.FullName -OutputPath .\output -All
+
+# Если найдено несколько CA-конфигураций, укажите целевой CA
+.\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath $plan.FullName -OutputPath .\output -All -CAName "<CA Common Name>"
 ```
 
 Подробнее см. `docs\Runbooks\Rollback_Runbook.md`

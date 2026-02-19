@@ -157,7 +157,11 @@ $ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\outpu
 ### 5. Применение изменений
 
 ```powershell
+# Этап 1: применение без рестарта CertSvc (рекомендуется)
 .\src\pki-align\Invoke-PkiAlignment.ps1 -ConfigPath .\config\env.json -OutputPath .\output -Apply -Backup
+
+# Этап 2 (опционально, в согласованное окно): рестарт CertSvc
+.\src\pki-align\Invoke-PkiAlignment.ps1 -ConfigPath .\config\env.json -OutputPath .\output -Apply -Backup -RestartCertSvc
 ```
 
 ### 6. Откат изменений (если требуется)
@@ -166,12 +170,20 @@ $ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\outpu
 # Откат всех изменений
 .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath .\output\alignment_plan_*.json -OutputPath .\output -All
 
+# Если на сервере несколько CA-конфигураций, укажите целевой CA
+.\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath .\output\alignment_plan_*.json -OutputPath .\output -All -CAName "<CA Common Name>"
+
 # Откат выборочных изменений
 .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath .\output\alignment_plan_*.json -OutputPath .\output -ChangeIds @("change-id-1", "change-id-2")
 
 # WhatIf режим для проверки плана отката
 .\src\pki-rollback\Invoke-PkiRollback.ps1 -AlignmentPlanPath .\output\alignment_plan_*.json -OutputPath .\output -All -WhatIf
 ```
+
+Примечания по безопасности применения:
+- `Invoke-PkiAlignment.ps1` больше не рестартует CertSvc автоматически без `-RestartCertSvc`.
+- При изменении CRL publication URLs выполняется merge существующих записей (без «слепого» перезаписывания), с дедупликацией и сохранением флагов записи.
+- Для детерминированного таргетинга CA в alignment используется `config.ca1.name`.
 
 ## Принципы безопасности
 

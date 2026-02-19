@@ -96,6 +96,102 @@ function Assert-Administrator {
     }
 }
 
+function Invoke-ExternalCommand {
+    <#
+    .SYNOPSIS
+    Безопасно выполняет внешнюю команду с timeout/retry и сбором stdout/stderr.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+
+        [string[]]$Arguments = @(),
+
+        [int]$TimeoutSeconds = 60,
+
+        [int]$RetryCount = 0,
+
+        [int]$RetryDelaySeconds = 2,
+
+        [switch]$IgnoreErrors
+    )
+
+    $attempt = 0
+    $maxAttempts = [Math]::Max(1, $RetryCount + 1)
+    $lastResult = $null
+
+    while ($attempt -lt $maxAttempts) {
+        $attempt++
+        $stdOutFile = [System.IO.Path]::GetTempFileName()
+        $stdErrFile = [System.IO.Path]::GetTempFileName()
+
+        try {
+            $proc = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru -RedirectStandardOutput $stdOutFile -RedirectStandardError $stdErrFile -ErrorAction Stop
+
+            if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+                try { $proc.Kill() } catch {}
+                throw "Таймаут выполнения команды ($TimeoutSeconds сек): $FilePath $($Arguments -join ' ')"
+            }
+
+            $stdOut = Get-Content -Path $stdOutFile -Raw -ErrorAction SilentlyContinue
+            $stdErr = Get-Content -Path $stdErrFile -Raw -ErrorAction SilentlyContinue
+
+            $lastResult = @{
+                FilePath    = $FilePath
+                Arguments   = $Arguments
+                ExitCode    = [int]$proc.ExitCode
+                StdOut      = $stdOut
+                StdErr      = $stdErr
+                Attempt     = $attempt
+                CommandLine = "$FilePath $($Arguments -join ' ')"
+            }
+
+            if ($lastResult.ExitCode -eq 0 -or $IgnoreErrors) {
+                return $lastResult
+            }
+
+            if ($attempt -lt $maxAttempts) {
+                Start-Sleep -Seconds $RetryDelaySeconds
+            }
+        }
+        catch {
+            if ($attempt -ge $maxAttempts) {
+                if ($IgnoreErrors) {
+                    return $lastResult
+                }
+                throw
+            }
+
+            Start-Sleep -Seconds $RetryDelaySeconds
+        }
+        finally {
+            Remove-Item -Path $stdOutFile -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $stdErrFile -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    if (-not $IgnoreErrors -and $lastResult -and $lastResult.ExitCode -ne 0) {
+        throw "Команда завершилась с кодом $($lastResult.ExitCode): $($lastResult.CommandLine)`nSTDERR: $($lastResult.StdErr)"
+    }
+
+    return $lastResult
+}
+
+function Convert-CommandTextToLines {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [string]$Text
+    )
+
+    if ([string]::IsNullOrEmpty($Text)) {
+        return @()
+    }
+
+    return @($Text -split "`r?`n" | Where-Object { $_ -ne '' })
+}
+
 function Get-CertUtilOutput {
     <#
     .SYNOPSIS
@@ -106,15 +202,28 @@ function Get-CertUtilOutput {
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
         
-        [switch]$IgnoreErrors
+        [switch]$IgnoreErrors,
+
+        [int]$TimeoutSeconds = 120,
+
+        [int]$RetryCount = 1
     )
     
     try {
-        $output = & certutil $Arguments 2>&1
-        if ($LASTEXITCODE -ne 0 -and -not $IgnoreErrors) {
-            Write-Warning "certutil завершился с кодом $LASTEXITCODE. Аргументы: $($Arguments -join ' ')"
+        $result = Invoke-ExternalCommand -FilePath 'certutil.exe' -Arguments $Arguments -TimeoutSeconds $TimeoutSeconds -RetryCount $RetryCount -RetryDelaySeconds 2 -IgnoreErrors:$IgnoreErrors
+        if (-not $result) {
+            return $null
         }
-        return $output
+
+        $lines = @()
+        $lines += Convert-CommandTextToLines -Text $result.StdOut
+        $lines += Convert-CommandTextToLines -Text $result.StdErr
+
+        if ($result.ExitCode -ne 0 -and -not $IgnoreErrors) {
+            Write-Warning "certutil завершился с кодом $($result.ExitCode). Аргументы: $($Arguments -join ' ')"
+        }
+
+        return $lines
     }
     catch {
         if (-not $IgnoreErrors) {
@@ -122,6 +231,40 @@ function Get-CertUtilOutput {
         }
         return $null
     }
+}
+
+function Get-AppCmdOutput {
+    <#
+    .SYNOPSIS
+    Выполняет appcmd.exe и возвращает вывод.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+
+        [switch]$IgnoreErrors,
+
+        [int]$TimeoutSeconds = 60
+    )
+
+    $appCmdPath = Join-Path $env:SystemRoot 'System32\inetsrv\appcmd.exe'
+    if (-not (Test-Path $appCmdPath)) {
+        if ($IgnoreErrors) {
+            return @()
+        }
+        throw "appcmd.exe не найден: $appCmdPath"
+    }
+
+    $result = Invoke-ExternalCommand -FilePath $appCmdPath -Arguments $Arguments -TimeoutSeconds $TimeoutSeconds -IgnoreErrors:$IgnoreErrors
+    if (-not $result) {
+        return @()
+    }
+
+    $lines = @()
+    $lines += Convert-CommandTextToLines -Text $result.StdOut
+    $lines += Convert-CommandTextToLines -Text $result.StdErr
+    return $lines
 }
 
 function Get-RegistryValue {
@@ -175,7 +318,11 @@ function Export-RegistryBackup {
     }
     
     try {
-        reg export "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration" $backupPath /y | Out-Null
+        $result = Invoke-ExternalCommand -FilePath 'reg.exe' -Arguments @('export', 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration', $backupPath, '/y') -TimeoutSeconds 60
+        if (-not $result -or $result.ExitCode -ne 0) {
+            Write-Warning "reg export завершился с ошибкой."
+            return $null
+        }
         return $backupPath
     }
     catch {
@@ -265,4 +412,4 @@ function ConvertTo-SafeJson {
     }
 }
 
-Export-ModuleMember -Function Import-PkiConfig, Test-PkiConfig, Test-Administrator, Assert-Administrator, Get-CertUtilOutput, Get-RegistryValue, Export-RegistryBackup, Get-ServiceStatus, Test-PathExists, Get-Timestamp, ConvertTo-SafeJson
+Export-ModuleMember -Function Import-PkiConfig, Test-PkiConfig, Test-Administrator, Assert-Administrator, Invoke-ExternalCommand, Get-CertUtilOutput, Get-AppCmdOutput, Get-RegistryValue, Export-RegistryBackup, Get-ServiceStatus, Test-PathExists, Get-Timestamp, ConvertTo-SafeJson
