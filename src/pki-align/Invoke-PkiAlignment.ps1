@@ -10,6 +10,7 @@ param(
     [string]$BaselinePath = '',
     [switch]$Apply,
     [switch]$Backup,
+    [switch]$RestartCertSvc,
     [string]$RollbackPointName = ''
 )
 
@@ -474,17 +475,20 @@ function Invoke-ApplyChanges {
         }
     }
 
-    if ($restartNeeded) {
+    if ($restartNeeded -and $RestartCertSvc) {
         Write-Log -Level Info -Message "Restarting CertSvc to apply changes..." -Operation 'Alignment' -OutputPath $OutputPath
         try {
-            $serviceName = if ($config.ca1.serviceName) { $config.ca1.serviceName } else { "CertSvc" }
+            $serviceName = if ($config.ca1.serviceName) { $config.ca1.serviceName } else { 'CertSvc' }
             Restart-Service -Name $serviceName -Force -ErrorAction Stop
             Write-Log -Level Info -Message "Service $serviceName restarted successfully." -Operation 'Alignment' -OutputPath $OutputPath
         }
         catch {
-             Write-Log -Level Error -Message "Failed to restart service: $_" -Operation 'Alignment' -OutputPath $OutputPath
-             Write-Warning "⚠️ Failed to restart service. Please restart it manually."
+            Write-Log -Level Error -Message "Failed to restart service: $_" -Operation 'Alignment' -OutputPath $OutputPath
+            Write-Warning "Failed to restart service. Restart it manually in approved change window."
         }
+    }
+    elseif ($restartNeeded) {
+        Write-Log -Level Warning -Message 'CRL publication settings changed. Restart CertSvc manually in approved window or run with -RestartCertSvc.' -Operation 'Alignment' -OutputPath $OutputPath
     }
 
     Write-Log -Level Info -Message "Apply result: $appliedCount success, $failedCount failed" -Operation 'Alignment' -OutputPath $OutputPath
