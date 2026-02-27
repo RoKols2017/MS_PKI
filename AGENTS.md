@@ -12,6 +12,25 @@
 - Правила безопасности: `rules/PKI_RULES.md`
 - Операционные инструкции: `README.md`, `QUICKSTART.md`, `docs/Runbooks`
 
+## Documentation
+| Document | Path | Description |
+|----------|------|-------------|
+| README | `README.md` | Основная документация и запуск |
+| Quickstart | `QUICKSTART.md` | Краткий сценарий запуска |
+| Admin Start Guide | `docs/ADMIN_START_GUIDE.md` | Вход для администраторов |
+| Overview | `docs/00_Overview.md` | Обзор проекта и этапов |
+| Phase 1 Audit | `docs/01_Phase1_Audit_AS-IS.md` | Детали аудита AS-IS |
+| Audit Report | `docs/AUDIT_REPORT.md` | Отчёт по аудиту |
+| Audit Fixes Summary | `docs/AUDIT_FIXES_SUMMARY.md` | Сводка исправлений |
+| CA0 Config Guide | `docs/Get-CA0Config_Guide.md` | Сбор параметров CA0 |
+| Init Config Guide | `docs/Initialize-PkiConfig_Guide.md` | Заполнение env-конфига |
+| Where To Run Scripts | `docs/WHERE_TO_RUN_SCRIPTS.md` | Где запускать сценарии |
+| Offline Checklist | `docs/OFFLINE_CHECKLIST.md` | Офлайн-чеклист CA0/CA1 |
+| Runbook: Root CRL | `docs/Runbooks/RootCRL_Runbook.md` | Публикация CRL Root CA |
+| Runbook: Issuing CRL | `docs/Runbooks/IssuingCRL_Runbook.md` | Публикация CRL Issuing CA |
+| Runbook: Rollback | `docs/Runbooks/Rollback_Runbook.md` | Откат изменений |
+| Runbook: PreProd Test | `docs/Runbooks/PreProd_Test_Runbook.md` | Предпродовый smoke-прогон |
+
 ## Cursor/Copilot rules
 Проверено:
 - `.cursorrules` отсутствует
@@ -159,3 +178,9 @@ Invoke-Pester -Path .\tests\SomeFeature.Tests.ps1 -Output Detailed
 - Есть подтверждение поведения через `-WhatIf` или узкий функциональный прогон
 - Документация обновлена, если изменился контракт/CLI/поток
 - Не нарушены запреты (CA deletion, re-root, массовый reissue)
+
+## AI Context Files
+- `AGENTS.md` — карта проекта и обязательные правила для агента
+- `.ai-factory/DESCRIPTION.md` — спецификация проекта и стек
+- `.ai-factory/ARCHITECTURE.md` — архитектурные правила (генерируется через `/aif-architecture`)
+- `.mcp.json` — конфигурация MCP серверов для проекта

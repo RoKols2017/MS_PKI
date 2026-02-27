@@ -258,6 +258,7 @@ $ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force -Path .\outpu
 - [`docs/Get-CA0Config_Guide.md`](docs/Get-CA0Config_Guide.md) — сбор параметров CA0 на CA0 сервере
 - [`docs/ADMIN_START_GUIDE.md`](docs/ADMIN_START_GUIDE.md) — полное руководство для администратора
 - [`docs/WHERE_TO_RUN_SCRIPTS.md`](docs/WHERE_TO_RUN_SCRIPTS.md) — на каком CA запускать скрипты
+- [`docs/OFFLINE_CHECKLIST.md`](docs/OFFLINE_CHECKLIST.md) — пошаговый офлайн-чеклист CA0/CA1
 
 #### Документация по фазам
 - [`docs/01_Phase1_Audit_AS-IS.md`](docs/01_Phase1_Audit_AS-IS.md) — Phase 1: Audit (AS-IS)
